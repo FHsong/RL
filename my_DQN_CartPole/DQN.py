@@ -100,7 +100,7 @@ class DQN():
         plt.title('DQN')
         plt.xlabel('回合数')
         plt.ylabel('总回报')
-        plt.savefig('dqn')
+        plt.savefig(result_path)
         # plt.show()
 
 

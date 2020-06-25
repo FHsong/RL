@@ -190,6 +190,7 @@ class DoubleDQN_ER(Model):
         plt.figure()
         plt.plot(np.arange(len(returns)) * 20, np.array(returns))
         plt.plot(np.arange(len(returns)) * 20, np.array(returns), 's')
+        plt.title('DoubleDQN_ER')
         plt.xlabel('回合数')
         plt.ylabel('总回报')
         plt.savefig(result_path)
