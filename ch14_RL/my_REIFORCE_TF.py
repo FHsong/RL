@@ -1,7 +1,7 @@
 import 	gym,os
 import  numpy as np
 import  matplotlib
-from 	matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 # Default parameters for plots
 matplotlib.rcParams['font.size'] = 18
 matplotlib.rcParams['figure.titlesize'] = 18
@@ -35,6 +35,7 @@ class Policy(keras.Model):
         self.optimizer = optimizers.Adam(lr=learning_rate)
 
         self.count = 1
+
 
     def call(self, inputs, training=None):
         # 状态输入s的shape为向量：[4]

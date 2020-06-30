@@ -14,16 +14,16 @@ matplotlib.rcParams['axes.unicode_minus']=False
 #####################  hyper parameters  ####################
 lambd = .9             # 折扣率(decay factor)
 epsilon = 0.1                 # epsilon-greedy算法参数，越大随机性越大，越倾向于探索行为。
-
 is_render = False          # 是否渲染游戏
+RANDOMSEED = 1              # 设置随机种子。建议大家都设置，这样试验可以重现。
 
-class DQN(Model):
+
+class Network(Model):
     def __init__(self):
-        super(DQN, self).__init__()
+        super(Network, self).__init__()
         self.fc1 = layers.Dense(32, kernel_initializer='he_normal', activation='relu')
         self.fc2 = layers.Dense(16, kernel_initializer='he_normal', activation='relu')
         self.out = layers.Dense(2, kernel_initializer='he_normal', activation=None)
-
 
     def call(self, inputs):
         x = self.fc1(inputs)
@@ -32,21 +32,14 @@ class DQN(Model):
         return x
 
 
-    def get_Q_value(self, state):
-        state = tf.constant(state, dtype=tf.float32)
-        state = tf.expand_dims(state, axis=0)
-        Q_value = self.call(state).numpy()
-        return Q_value
 
-
-class DoubleDQN_ER(Model):
+class DQN_ER():
     def __init__(self, env, learning_rate, n_episode, batch):
-        super(DoubleDQN_ER, self).__init__()
         self.env = env
 
         # 建立两个网络
-        self.Q_network = DQN()
-        self.target_Q_network = DQN()
+        self.Q_network = Network()
+        self.target_Q_network = Network()
 
         ## epsilon-greedy相关参数
         self.epsilon = 1.0  # epsilon大小，随机数大于epsilon，则进行开发；否则，进行探索。
@@ -62,8 +55,6 @@ class DoubleDQN_ER(Model):
         self.is_rend = False  # 默认不渲染，当达到一定次数后，开始渲染。
 
         self.n_episode = n_episode  # 迭代多少轮
-
-
 
     def update_target_Q(self):
         for i, target in zip(self.Q_network.trainable_weights, self.target_Q_network.trainable_weights):
@@ -100,7 +91,6 @@ class DoubleDQN_ER(Model):
             return action
 
 
-
     def process_data(self):
         # 随机从队列中取出一个batch大小的数据
         data = random.sample(self.memory, self.batch)
@@ -113,15 +103,11 @@ class DoubleDQN_ER(Model):
         y = self.Q_network(state).numpy()
         Q1 = self.target_Q_network(next_state).numpy()
 
-        Q2 = self.Q_network(next_state).numpy()
-        nex_action = np.argmax(Q2, axis=1)
-
         for i, (_, a, _, r, done) in enumerate(data):
             if done:
                 target = r
             else:
-                # target = r + self.gamma * np.max(Q1[i])  #这一行是DQN_ER
-                target = r + self.gamma * Q1[i][nex_action[i]]
+                target = r + self.gamma * np.max(Q1[i])
             target = np.array(target, dtype='float32')
             y[i][a] = target
 
@@ -141,18 +127,22 @@ class DoubleDQN_ER(Model):
         return loss
 
 
-    def train(self, result_path):
+    def run(self, result_path):
+        print('----------------- DQN_ER -----------------')
+
         step = 0
         rend = 0
         total_reward = 0
         returns = []
+
+        self.env.seed(RANDOMSEED)
         for episode in range(self.n_episode):
             state = self.env.reset()
 
             total_loss = []
             loss = 0
 
-            for i in range(500):
+            for i in range(200):
                 # if is_render == True: env.render() # 渲染
                 action = self.get_action(state)
                 next_state, r, done, _ = self.env.step(action)
@@ -190,25 +180,8 @@ class DoubleDQN_ER(Model):
         plt.figure()
         plt.plot(np.arange(len(returns)) * 20, np.array(returns))
         plt.plot(np.arange(len(returns)) * 20, np.array(returns), 's')
-        plt.title('DoubleDQN_ER')
+        plt.title('DQN_ER')
         plt.xlabel('回合数')
         plt.ylabel('总回报')
         plt.savefig(result_path)
         plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

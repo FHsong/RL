@@ -49,7 +49,7 @@ RANDOMSEED = 1              # 设置随机种子。建议大家都设置，这�
 
 DISPLAY_REWARD_THRESHOLD = 400  # 如果奖励超过DISPLAY_REWARD_THRESHOLD，就开始渲染
 RENDER = False                  # 开始的时候，不渲染游戏。
-num_episodes = 2                # 游戏迭代次数
+num_episodes = 200                # 游戏迭代次数
 
 ###############################  PG  ####################################
 
@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
     env = gym.make(ENV_NAME)
     env.seed(RANDOMSEED)  # reproducible, general Policy gradient has high variance
-    env = env.unwrapped
+    # env = env.unwrapped
 
     print(env.action_space)
     print(env.observation_space)
@@ -209,8 +209,11 @@ if __name__ == '__main__':
         # output_graph=True,
     )
 
-    if args.train:
+    if True:
         reward_buffer = []
+        total_reward = 0
+        returns = []
+
 
         #=====开始更新训练=====
         for i_episode in range(num_episodes):
@@ -218,66 +221,75 @@ if __name__ == '__main__':
             episode_time = time.time()
             observation = env.reset()
 
-            while True:
-                if RENDER:
-                    env.render()
+            for step in range(200):
+                # if RENDER:
+                #     env.render()
 
                 # 注意：这里没有用贪婪算法，而是根据pi随机动作，以保证一定的探索性。
                 action = RL.choose_action(observation)
 
                 observation_, reward, done, info = env.step(action)
 
+                total_reward += reward
                 # 保存数据
                 RL.store_transition(observation, action, reward)
 
                 # PG用的是MC，如果到了最终状态
                 if done:
-                    ep_rs_sum = sum(RL.ep_rs)
-
-                    if 'running_reward' not in globals():
-                        running_reward = ep_rs_sum
-                    else:
-                        running_reward = running_reward * 0.99 + ep_rs_sum * 0.01
-
-                    #如果超过DISPLAY_REWARD_THRESHOLD就开始渲染游戏吧。
-                    if running_reward > DISPLAY_REWARD_THRESHOLD:
-                        RENDER = True 
+                    # ep_rs_sum = sum(RL.ep_rs)
+                    #
+                    # if 'running_reward' not in globals():
+                    #     running_reward = ep_rs_sum
+                    # else:
+                    #     running_reward = running_reward * 0.99 + ep_rs_sum * 0.01
+                    #
+                    # #如果超过DISPLAY_REWARD_THRESHOLD就开始渲染游戏吧。
+                    # if running_reward > DISPLAY_REWARD_THRESHOLD:
+                    #     RENDER = True
 
                     # print("episode:", i_episode, "  reward:", int(running_reward))
 
-                    print(
-                        "Episode [%d/%d] \tsum reward: %d  \trunning reward: %f \ttook: %.5fs " %
-                        (i_episode, num_episodes, ep_rs_sum, running_reward, time.time() - episode_time)
-                    )
-                    reward_buffer.append(running_reward)
+                    # print(
+                    #     "Episode [%d/%d] \tsum reward: %d  \trunning reward: %f \ttook: %.5fs " %
+                    #     (i_episode, num_episodes, ep_rs_sum, running_reward, time.time() - episode_time)
+                    # )
+                    # reward_buffer.append(running_reward)
 
                     # 开始学习
                     vt = RL.learn()
 
                     # 画图
-                    plt.ion()
-                    plt.cla()
-                    plt.title('PG')
-                    plt.plot(reward_buffer, )  
-                    plt.xlabel('episode steps')
-                    plt.ylabel('normalized state-action value')
-                    plt.show()
-                    plt.pause(0.1)
+                    # plt.ion()
+                    # plt.cla()
+                    # plt.title('PG')
+                    # plt.plot(reward_buffer, )
+                    # plt.xlabel('episode steps')
+                    # plt.ylabel('normalized state-action value')
+                    # plt.show()
+                    # plt.pause(0.1)
 
                     break
                 
                 # 开始新一步
                 observation = observation_
+
+            if i_episode % 20 == 0:
+                returns.append(total_reward / 20)
+                total_reward = 0
+                print('Episode: {}/{}  | Episode Average Reward: {:.4f}'
+                      .format(i_episode, num_episodes, returns[-1]))
+
+
         RL.save_ckpt()
         plt.ioff()
         plt.show()
 
     # =====test=====
-    RL.load_ckpt()
-    observation = env.reset()
-    while True:
-        env.render()
-        action = RL.choose_action(observation)      # 这里建议大家可以改贪婪算法获取动作，对比效果是否有不同。
-        observation, reward, done, info = env.step(action)
-        if done:
-            observation = env.reset()
+    # RL.load_ckpt()
+    # observation = env.reset()
+    # while True:
+    #     env.render()
+    #     action = RL.choose_action(observation)      # 这里建议大家可以改贪婪算法获取动作，对比效果是否有不同。
+    #     observation, reward, done, info = env.step(action)
+    #     if done:
+    #         observation = env.reset()

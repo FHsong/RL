@@ -405,10 +405,10 @@ if __name__ == '__main__':
     # set train mode
     td3_trainer.q_net1.train()
     td3_trainer.q_net2.train()
-    td3_trainer.target_q_net1.train()
-    td3_trainer.target_q_net2.train()
+    td3_trainer.target_q_net1.run()
+    td3_trainer.target_q_net2.run()
     td3_trainer.policy_net.train()
-    td3_trainer.target_policy_net.train()
+    td3_trainer.target_policy_net.run()
 
     # training loop
     if args.train:

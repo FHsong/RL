@@ -1,5 +1,5 @@
 """
-Actor-Critic 
+Actor-Critic
 -------------
 It uses TD-error as the Advantage.
 
@@ -69,13 +69,14 @@ args = parser.parse_args()
 #####################  hyper parameters  ####################
 
 OUTPUT_GRAPH = False
-MAX_EPISODE = 3000              # number of overall episodes for training
+MAX_EPISODE = 3000  # number of overall episodes for training
 DISPLAY_REWARD_THRESHOLD = 100  # renders environment if running reward is greater then this threshold
-MAX_EP_STEPS = 1000             # maximum time step in one episode
-RENDER = False                  # rendering wastes time
-LAMBDA = 0.9                    # reward discount in TD error
-LR_A = 0.001                    # learning rate for actor
-LR_C = 0.01                     # learning rate for critic
+MAX_EP_STEPS = 1000  # maximum time step in one episode
+RENDER = False  # rendering wastes time
+LAMBDA = 0.9  # reward discount in TD error
+LR_A = 0.001  # learning rate for actor
+LR_C = 0.01  # learning rate for critic
+
 
 ###############################  Actor-Critic  ####################################
 
@@ -83,7 +84,6 @@ LR_C = 0.01                     # learning rate for critic
 class Actor(object):
 
     def __init__(self, n_features, n_actions, lr=0.001):
-        
         # 创建Actor网络
         def get_model(inputs_shape):
             ni = tl.layers.Input(inputs_shape, name='state')
@@ -132,7 +132,6 @@ class Actor(object):
 class Critic(object):
 
     def __init__(self, n_features, lr=0.01):
-
         # 创建Critic网络。
         def get_model(inputs_shape):
             ni = tl.layers.Input(inputs_shape, name='state')
@@ -198,27 +197,24 @@ if __name__ == '__main__':
     critic = Critic(n_features=N_F, lr=LR_C)
 
     ## 训练部分
-    if args.train:
-        t0 = time.time()
-        for i_episode in range(MAX_EPISODE):
-            returns = []
+    if True:
+        for episode in range(200):
             total_reward = 0
+            returns = []
             # episode_time = time.time()
             s = env.reset().astype(np.float32)
             t = 0  # number of step in this episode
             all_r = []  # rewards of all steps
-            while True:
+            for step in range(500):
 
-                if RENDER: env.render()
+                # if RENDER: env.render()
 
                 a = actor.choose_action(s)
 
                 s_new, r, done, info = env.step(a)
                 s_new = s_new.astype(np.float32)
                 # [敲黑板]，我们希望在濒死状态，可以减去一个大reward。让智能体学习如何力挽狂澜。
-                total_reward += r
-
-
+                if done: break
                 # these may helpful in some tasks
                 # if abs(s_new[0]) >= env.observation_space.high[0]:
                 # #  cart moves more than 2.4 units from the center
@@ -229,122 +225,19 @@ if __name__ == '__main__':
                 all_r.append(r)
 
                 # Critic学习，并计算出td-error
-                td_error = critic.learn(
-                    s, r, s_new
-                )  # learn Value-function : gradient = grad[r + lambda * V(s_new) - V(s)]
+                td_error = critic.learn(s, r, s_new)  # learn Value-function : gradient = grad[r + lambda * V(s_new) - V(s)]
 
                 # actor学习
-                try:
-                    for _ in range(1):
-                        actor.learn(s, a, td_error)  # learn Policy : true_gradient = grad[logPi(s, a) * td_error]
-                except KeyboardInterrupt:  # if Ctrl+C at running actor.learn(), then save model, or exit if not at actor.learn()
-                    actor.save_ckpt()
-                    critic.save_ckpt()
-                    # logging
-                if done: break
+                actor.learn(s, a, td_error)  # learn Policy : true_gradient = grad[logPi(s, a) * td_error]
+
+                total_reward += r
                 s = s_new
 
-                t += 1
-
-                if done or t >= MAX_EP_STEPS:
-                    ep_rs_sum = sum(all_r)
-
-                    if 'running_reward' not in globals():
-                        running_reward = ep_rs_sum
-                    else:
-                        running_reward = running_reward * 0.95 + ep_rs_sum * 0.05
-                    # start rending if running_reward greater than a threshold
-                    # if running_reward > DISPLAY_REWARD_THRESHOLD: RENDER = True
-                    # print("Episode: %d reward: %f running_reward %f took: %.5f" % \
-                    #     (i_episode, ep_rs_sum, running_reward, time.time() - episode_time))
-                    print('Episode: {}/{}  | Episode Reward: {:.4f}  | Running Time: {:.4f}'\
-                    .format(i_episode, MAX_EPISODE, ep_rs_sum, time.time()-t0 ))
-
-                    # Early Stopping for quick check
-                    if t >= MAX_EP_STEPS:
-                        print("Early Stopping")
-                        s = env.reset().astype(np.float32)
-                        rall = 0
-                        while True:
-                            env.render()
-                            # a = actor.choose_action(s)
-                            a = actor.choose_action_greedy(s)  # Hao Dong: it is important for this task
-                            s_new, r, done, info = env.step(a)
-                            s_new = np.concatenate((s_new[0:N_F], s[N_F:]), axis=0).astype(np.float32)
-                            rall += r
-                            s = s_new
-                            if done:
-                                print("reward", rall)
-                                s = env.reset().astype(np.float32)
-                                rall = 0
-                    break
-
-            if i_episode % 20 == 0:
+            if episode % 20 == 0:
                 returns.append(total_reward / 20)
                 total_reward = 0
                 print('Episode: {}/{}  | Episode Average Reward: {:.4f}'
-                      .format(i_episode, MAX_EPISODE, returns[-1]))
+                      .format(episode, 200, returns[-1]))
 
-        actor.save_ckpt()
-        critic.save_ckpt()
 
-    ## 测试部分
-    # if args.test:
-    #     actor.load_ckpt()
-    #     critic.load_ckpt()
-    #     t0 = time.time()
-    #
-    #     for i_episode in range(MAX_EPISODE):
-    #         episode_time = time.time()
-    #         s = env.reset().astype(np.float32)
-    #         t = 0  # number of step in this episode
-    #         all_r = []  # rewards of all steps
-    #         while True:
-    #             if RENDER: env.render()
-    #             a = actor.choose_action(s)
-    #             s_new, r, done, info = env.step(a)
-    #             s_new = s_new.astype(np.float32)
-    #             if done: r = -20
-    #             # these may helpful in some tasks
-    #             # if abs(s_new[0]) >= env.observation_space.high[0]:
-    #             # #  cart moves more than 2.4 units from the center
-    #             #     r = -20
-    #             # reward for the distance between cart to the center
-    #             # r -= abs(s_new[0])  * .1
-    #
-    #             all_r.append(r)
-    #             s = s_new
-    #             t += 1
-    #
-    #             if done or t >= MAX_EP_STEPS:
-    #                 ep_rs_sum = sum(all_r)
-    #
-    #                 if 'running_reward' not in globals():
-    #                     running_reward = ep_rs_sum
-    #                 else:
-    #                     running_reward = running_reward * 0.95 + ep_rs_sum * 0.05
-    #                 # start rending if running_reward greater than a threshold
-    #                 # if running_reward > DISPLAY_REWARD_THRESHOLD: RENDER = True
-    #                 # print("Episode: %d reward: %f running_reward %f took: %.5f" % \
-    #                 #     (i_episode, ep_rs_sum, running_reward, time.time() - episode_time))
-    #                 print('Episode: {}/{}  | Episode Reward: {:.4f}  | Running Time: {:.4f}'\
-    #                 .format(i_episode, MAX_EPISODE, ep_rs_sum, time.time()-t0 ))
-    #
-    #                 # Early Stopping for quick check
-    #                 if t >= MAX_EP_STEPS:
-    #                     print("Early Stopping")
-    #                     s = env.reset().astype(np.float32)
-    #                     rall = 0
-    #                     while True:
-    #                         env.render()
-    #                         # a = actor.choose_action(s)
-    #                         a = actor.choose_action_greedy(s)  # Hao Dong: it is important for this task
-    #                         s_new, r, done, info = env.step(a)
-    #                         s_new = np.concatenate((s_new[0:N_F], s[N_F:]), axis=0).astype(np.float32)
-    #                         rall += r
-    #                         s = s_new
-    #                         if done:
-    #                             print("reward", rall)
-    #                             s = env.reset().astype(np.float32)
-    #                             rall = 0
-    #                 break
+

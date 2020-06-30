@@ -38,7 +38,7 @@ for i_episode in range(85):
         #将观测，动作和回报存储起来
         RL.store_transition(observation, action, reward)
         if done:
-            ep_rs_sum = sum(RL.ep_rs)
+            ep_rs_sum = sum(RL.ep_rewards)
             if 'running_reward' not in globals():
                 running_reward = ep_rs_sum
             else:

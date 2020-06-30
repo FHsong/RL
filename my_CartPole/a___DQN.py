@@ -13,13 +13,12 @@ matplotlib.rcParams['axes.unicode_minus']=False
 
 #####################  hyper parameters  ####################
 lambd = .9             # 折扣率(decay factor)
-epsilon = 0.1                 # epsilon-greedy算法参数，越大随机性越大，越倾向于探索行为。
 render = False          # 是否渲染游戏
 
 
-class DQN_1(Model):
+class Network(Model):
     def __init__(self):
-        super(DQN_1, self).__init__()
+        super(Network, self).__init__()
         self.fc1 = layers.Dense(32, kernel_initializer='he_normal', activation='relu')
         self.fc2 = layers.Dense(16, kernel_initializer='he_normal', activation='relu')
         self.out = layers.Dense(2, kernel_initializer='he_normal', activation=None)
@@ -33,12 +32,13 @@ class DQN_1(Model):
 
 class DQN():
     def __init__(self, env, learning_rate, n_episode):
-        self.DQN = DQN_1()
+        self.DQN = Network()
 
         self.env = env
         self.learning_rate = learning_rate
         self.optimizer = tf.optimizers.Adam(learning_rate)  # 优化器
         self.n_episode = n_episode
+        self.epsilon = 0.1
 
 
     def get_Q_value(self, state):
@@ -48,7 +48,7 @@ class DQN():
         return Q_value
 
 
-    def train(self, result_path):
+    def run(self, result_path):
         returns = []
         total_reward = 0
         for episode in range(self.n_episode):
@@ -59,7 +59,7 @@ class DQN():
                 allQ = self.get_Q_value(state)
                 action = np.argmax(allQ, axis=1)[0]
                 # e-Greedy：如果小于epsilon，就智能体随机探索。否则，就用最大Q值的动作。
-                if np.random.random() < epsilon:
+                if np.random.random() > self.epsilon:
                     action = self.env.action_space.sample()
 
                 next_state, r, done, _ = self.env.step(action)
@@ -76,7 +76,7 @@ class DQN():
                     _qvalues = self.DQN(state)
 
                     targetQ = tf.constant(targetQ, dtype=tf.float32)
-                    _loss = tf.losses.MSE(targetQ, _qvalues)
+                    _loss = tf.losses.mean_squared_error(targetQ, _qvalues)
 
                 grad = tape.gradient(_loss, self.DQN.trainable_weights)
                 self.optimizer.apply_gradients(zip(grad, self.DQN.trainable_weights))
@@ -84,6 +84,7 @@ class DQN():
                 state = next_state
                 total_reward += r
                 if done:
+                    # self.epsilon = 1. / ((episode / 50) + 10)
                     break
 
             if episode % 20 == 0:

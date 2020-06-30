@@ -1,5 +1,6 @@
 import numpy as np
-import random
 
-l = [[1,2], [5,4]]
-print(np.array(6, dtype='float32'))
+p = [0.1, 0.1, 0.8]
+for _ in range(10):
+    a = np.random.choice(len(p), p=p)
+    print(a)
